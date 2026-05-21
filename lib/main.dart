@@ -1,31 +1,25 @@
-import 'package:currency_converter/currency_converter_material_page.dart';
-import 'package:currency_converter/currency_converter_cupertino_page.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
+// Import your new file here so main.dart can find the widget
+import 'material_page.dart'; 
 
-
-void main(){
-  runApp(const MyCupertinoApp());
+void main() {
+  runApp(const CurrencyConverterApp());
 }
 
-class MyApp extends StatelessWidget{
-  const MyApp({super.key});
+class CurrencyConverterApp extends StatelessWidget {
+  const CurrencyConverterApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: CurrencyConverterMaterialPage(),
-    );
-  }
-}
-
-class MyCupertinoApp extends StatelessWidget {
-  const MyCupertinoApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const CupertinoApp(
-      home: CurrencyConverterCupertinoPage(),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color.fromARGB(255, 120, 219, 255),
+      ),
+      // Set the home screen to use the imported MultiCurrencyConverter widget
+      home: const MultiCurrencyConverter(), 
     );
   }
 }
