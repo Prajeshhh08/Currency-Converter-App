@@ -50,7 +50,7 @@ class _MultiCurrencyConverterState extends State<MultiCurrencyConverter> {
   }
 
   Future<void> _convertCurrency() async {
-    const String apiKey = '63cab0b58067bda1157d53eb'; 
+    const String apiKey = 'API_KEY_HERE'; 
     final String url = 'https://v6.exchangerate-api.com/v6/$apiKey/latest/$_fromCurrency';
 
     try {
