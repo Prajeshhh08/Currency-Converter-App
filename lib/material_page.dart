@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class MultiCurrencyConverter extends StatefulWidget {
   const MultiCurrencyConverter({super.key});
@@ -13,34 +14,79 @@ class _MultiCurrencyConverterState extends State<MultiCurrencyConverter> {
   String _fromCurrency = 'USD';
   String _toCurrency = 'INR';
   String _result = '0.00';
+  double _currentRate = 0.0;
+  
+  List<String> _currencies = ['USD', 'INR', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD'];
 
-  final Map<String, double> _exchangeRates = {
-    'USD': 1.0,
-  'INR': 96.29,  
-  'EUR': 0.86,   
-  'GBP': 0.74,   
-  'JPY': 158.94, 
-  'AUD': 1.40,   
-  'CAD': 1.38,
-  };
+  // This runs when the app starts to get the full list of currencies from apiiiii
+  @override
+  void initState() {
+    super.initState();
+    _fetchCurrencies(); 
+  }
 
-  void _convertCurrency() {
-    double? inputAmount = double.tryParse(_amountController.text);
-    if (inputAmount == null || inputAmount <= 0) {
-      setState(() => _result = "0.00");
-      return;
+  Future<void> _fetchCurrencies() async {
+    print("Step 1: Starting API Call...");
+    const String apiKey = 'YOUR_API_KEY_HERE';
+    final String url = 'https://v6.exchangerate-api.com/v6/$apiKey/codes';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      print("Step 2: Response Received! Status: ${response.statusCode}");
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print("Step 3: Data decoded successfully.");
+        List<String> tempCodes = [];
+        for (var code in data['supported_codes']) {
+          tempCodes.add(code[0]); 
+        }
+        setState(() {
+          _currencies = tempCodes;
+        });
+      }
+    } catch (e) {
+      debugPrint("Could not fetch codes, using defaults.");
     }
-    double amountInUSD = inputAmount / _exchangeRates[_fromCurrency]!;
-    double convertedAmount = amountInUSD * _exchangeRates[_toCurrency]!;
-    setState(() {
-      _result = convertedAmount.toStringAsFixed(2);
-    });
+  }
+
+  Future<void> _convertCurrency() async {
+    const String apiKey = '63cab0b58067bda1157d53eb'; 
+    final String url = 'https://v6.exchangerate-api.com/v6/$apiKey/latest/$_fromCurrency';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        double rate = data['conversion_rates'][_toCurrency].toDouble();
+
+        setState(() {
+          _currentRate = rate; 
+          double inputAmount = double.tryParse(_amountController.text) ?? 0.0;
+          _result = (inputAmount * _currentRate).toStringAsFixed(2);
+        });
+      } else {
+        setState(() => _result = "Error: API Side");
+      }
+    } catch (e) {
+      setState(() => _result = "Check Connection");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_currencies.length <= 7) { 
+    return const Scaffold(
+      backgroundColor: Color(0xFFE0F2F1), 
+      body: Center(
+        child: CircularProgressIndicator(
+          color: Colors.blueAccent,
+        ),
+      ),
+    );
+  }
     return Scaffold(
-      // Gradient Background
       body: Container(
         width: double.infinity,
         decoration: const BoxDecoration(
@@ -60,23 +106,22 @@ class _MultiCurrencyConverterState extends State<MultiCurrencyConverter> {
                 Text(
                   'Universal Currency\nConverter',
                   style: TextStyle(
-                    fontFamily: 'FinlandicaHeadline', // Match the name in YAML
+                    fontFamily: 'FinlandicaHeadline', 
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF263238),
                     ),
                   ),
                 const SizedBox(height: 40),
-                
-                // Main Input Card
+                // actual inputcard
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       )
@@ -92,7 +137,6 @@ class _MultiCurrencyConverterState extends State<MultiCurrencyConverter> {
                         style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                         decoration: const InputDecoration(
                           hintText: "0.00",
-                          prefixText: "\$ ",
                           border: InputBorder.none,
                         ),
                       ),
@@ -101,18 +145,38 @@ class _MultiCurrencyConverterState extends State<MultiCurrencyConverter> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildCurrencySelector("From", _fromCurrency, (val) => setState(() => _fromCurrency = val!)),
+                          Expanded(
+                            child: _buildCurrencySelector("From", _fromCurrency, (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _fromCurrency = val;
+                                  });
+                                  _convertCurrency(); 
+                                }
+                              }),
+                            ), 
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: const BoxDecoration(color: Color(0xFFD1E3FF), shape: BoxShape.circle),
                             child: const Icon(Icons.swap_horiz, color: Colors.blueAccent),
                           ),
-                          _buildCurrencySelector("To", _toCurrency, (val) => setState(() => _toCurrency = val!)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buildCurrencySelector("To", _toCurrency, (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _toCurrency = val;
+                                });
+                                _convertCurrency(); // <--- AND ADD IT HERE
+                              }
+                            }),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 25),
                       
-                      // Gradient Convert Button
+                      // convert button
                       InkWell(
                         onTap: _convertCurrency,
                         child: Container(
@@ -132,13 +196,12 @@ class _MultiCurrencyConverterState extends State<MultiCurrencyConverter> {
                 ),
                 
                 const SizedBox(height: 30),
-                
-                // Result Card
+                // result 
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE0F7FA).withOpacity(0.7),
+                    color: Color(0xFFE0F7FA).withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: Colors.white, width: 2),
                   ),
@@ -159,7 +222,7 @@ class _MultiCurrencyConverterState extends State<MultiCurrencyConverter> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "Exchange Rate: 1 $_fromCurrency = ${(_exchangeRates[_toCurrency]! / _exchangeRates[_fromCurrency]!).toStringAsFixed(4)} $_toCurrency",
+                        "Exchange Rate: 1 $_fromCurrency = ${_currentRate.toStringAsFixed(4)} $_toCurrency",
                         style:  TextStyle(
                           fontSize: 12, 
                           color: Colors.blueGrey[900],
@@ -177,27 +240,38 @@ class _MultiCurrencyConverterState extends State<MultiCurrencyConverter> {
     );
   }
 
-  Widget _buildCurrencySelector(String label, String value, ValueChanged<String?> onChanged) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, 
-        style: TextStyle(
-          color: Colors.blueGrey[900], 
-          fontSize: 14, 
-          fontWeight: FontWeight.bold
-          ),
+Widget _buildCurrencySelector(String label, String value, ValueChanged<String?> onSelected) {
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: TextStyle(color: Colors.blueGrey[900], fontSize: 14, fontWeight: FontWeight.bold)),
+      const SizedBox(height: 8),
+      DropdownMenu<String>(
+        width: constraints.maxWidth, 
+        menuHeight: 300,
+        initialSelection: value,
+        enableFilter: true, 
+        requestFocusOnTap: true,
+        label: Text(label),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.5),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        DropdownButton<String>(
-          value: value,
-          underline: const SizedBox(),
-          icon: const Icon(Icons.keyboard_arrow_down),
-          items: _exchangeRates.keys.map((String curr) {
-            return DropdownMenuItem(value: curr, child: Text(curr, style: const TextStyle(fontWeight: FontWeight.bold)));
-          }).toList(),
-          onChanged: onChanged,
-        ),
-      ],
+        dropdownMenuEntries: _currencies.map((String curr) {
+          return DropdownMenuEntry<String>(
+            value: curr,
+            label: curr,
+            style: MenuItemButton.styleFrom(textStyle: const TextStyle(fontWeight: FontWeight.bold)),
+          );
+        }).toList(),
+        onSelected: onSelected,
+      ),
+    ],
+  );
+  }
     );
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// Import your new file here so main.dart can find the widget
 import 'material_page.dart'; 
 
 void main() {
