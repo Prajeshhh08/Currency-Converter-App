@@ -27,7 +27,7 @@ class _MultiCurrencyConverterState extends State<MultiCurrencyConverter> {
 
   Future<void> _fetchCurrencies() async {
     print("Step 1: Starting API Call...");
-    const String apiKey = '63cab0b58067bda1157d53eb';
+    const String apiKey = 'API_KEY_HERE';
     final String url = 'https://v6.exchangerate-api.com/v6/$apiKey/codes';
 
     try {
